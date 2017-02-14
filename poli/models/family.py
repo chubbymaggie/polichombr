@@ -48,7 +48,7 @@ class DetectionType:
 
     @classmethod
     def fromstring(cls, val):
-        return getattr(cls, s, None)
+        return getattr(cls, val, None)
 
 
 class FamilyDataFile(db.Model):
@@ -66,7 +66,7 @@ class FamilyDataFile(db.Model):
 
 class FamilyStatus:
     """
-    Family analysis status by users.
+        Is the family analysis complete or not?
     """
     (
         FINISHED,
@@ -83,25 +83,21 @@ class FamilyStatus:
 
     @classmethod
     def fromstring(cls, val):
-        return getattr(cls, s, None)
+        return getattr(cls, val, None)
 
-"""
-    Yara signatures relationship (auto-classification).
-"""
+# Yara signatures relationship (auto-classification).
 familytoyara = db.Table('familytoyara',
                         db.Column('yara_id', db.Integer,
-                                  db.ForeignKey('yararule.id')),
+                                  db.ForeignKey('yararule.id'), index=True),
                         db.Column('family_id', db.Integer,
-                                  db.ForeignKey('family.id'))
+                                  db.ForeignKey('family.id'), index=True)
                         )
-"""
-    Samples relationship.
-"""
+# Samples relationship.
 familytosample = db.Table('familytosample',
                           db.Column('sample_id', db.Integer,
-                                    db.ForeignKey('sample.id')),
+                                    db.ForeignKey('sample.id'), index=True),
                           db.Column('family_id', db.Integer,
-                                    db.ForeignKey('family.id'))
+                                    db.ForeignKey('family.id'), index=True)
                           )
 
 
@@ -121,7 +117,7 @@ class Family(db.Model):
                             secondary=familytoyara,
                             backref=db.backref('families', lazy='dynamic'))
     # 1-N relationships
-    parent_id = db.Column(db.Integer, db.ForeignKey('family.id'))
+    parent_id = db.Column(db.Integer, db.ForeignKey('family.id'), index=True)
     subfamilies = db.relationship(
         'Family', backref=db.backref(
             'parents', remote_side=[id]))
@@ -161,9 +157,8 @@ class FamilySchema(ma.ModelSchema):
         fields = ('id',
                   'name',
                   'parent_id',
-                  'subfamilies',  # TODO make the families jsonable
+                  'subfamilies',
                   'samples',
-                  #'parents',
                   'abstract',
                   'status',
                   'TLP_sensibility'

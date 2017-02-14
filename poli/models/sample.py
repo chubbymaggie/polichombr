@@ -27,7 +27,7 @@ class SampleMetadata(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type_id = db.Column(db.Integer(), index=True)
     value = db.Column(db.String())
-    sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"))
+    sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"), index=True)
 
 
 class SampleMetadataType:
@@ -113,7 +113,7 @@ class StringsItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     string_type = db.Column(db.Integer(), index=True)
     string_value = db.Column(db.String())
-    sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"))
+    sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"), index=True)
 
 
 class StringsType:
@@ -147,10 +147,10 @@ class FunctionInfo(db.Model):
     """
     __tablename__ = 'functioninfo'
     id = db.Column(db.Integer, primary_key=True)
-    address = db.Column(db.String())
-    name = db.Column(db.String())
-    machoc_hash = db.Column(db.Integer(), index=True)
-    sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"))
+    address = db.Column(db.BigInteger(), index=True)
+    name = db.Column(db.String(), index=True)
+    machoc_hash = db.Column(db.BigInteger(), index=True)
+    sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"), index=True)
 
 
 class SampleMatch(db.Model):
@@ -160,9 +160,9 @@ class SampleMatch(db.Model):
     """
     __tablename__ = 'samplematch'
     id = db.Column(db.Integer, primary_key=True)
-    sid_1 = db.Column(db.Integer, db.ForeignKey('sample.id'))
-    sid_2 = db.Column(db.Integer, db.ForeignKey('sample.id'))
-    match_type = db.Column(db.String())
+    sid_1 = db.Column(db.Integer, db.ForeignKey('sample.id'), index=True)
+    sid_2 = db.Column(db.Integer, db.ForeignKey('sample.id'), index=True)
+    match_type = db.Column(db.String(), index=True)
 
 
 class FileName(db.Model):
@@ -235,10 +235,11 @@ sampletoyara = db.Table('sampletoyara',
 sampletoactions = db.Table('sampletoactions',
                            db.Column('sample_id',
                                      db.Integer,
-                                     db.ForeignKey('sample.id')),
+                                     db.ForeignKey('sample.id'), index=True),
                            db.Column('action_id',
                                      db.Integer,
-                                     db.ForeignKey('idaactions.id')))
+                                     db.ForeignKey('idaactions.id'),
+                                     index=True))
 
 
 class Sample(db.Model):
@@ -276,7 +277,7 @@ class Sample(db.Model):
             'sample', remote_side=[id]))
     functions = db.relationship(
         "FunctionInfo", backref=db.backref(
-            'sample', remote_side=[id]))
+            'sample', remote_side=[id]), lazy="dynamic")
     filenames = db.relationship(
         "FileName", backref=db.backref(
             'sample', remote_side=[id]))
@@ -299,7 +300,7 @@ class Sample(db.Model):
     # Abstract, set by user
     abstract = db.Column(db.String())
     # Import hash, set by tasks
-    import_hash = db.Column(db.String())
+    import_hash = db.Column(db.String(), index=True)
     # TLP level, mandatory
     TLP_sensibility = db.Column(
         db.Integer(),

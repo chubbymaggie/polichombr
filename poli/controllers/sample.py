@@ -182,7 +182,7 @@ class SampleController(object):
             Change file's TLP level.
         """
         if TLPLevel.tostring(tlp_level) == "":
-            return None
+            return False
         for family in sample.families:
             if family.TLP_sensibility > tlp_level:
                 return False
@@ -207,15 +207,6 @@ class SampleController(object):
         """
         sample_schema = SampleSchema()
         return sample_schema.dump(sample).data
-
-    @staticmethod
-    def get_all_samples():
-        """
-            Schema export.
-        """
-        sample_schema = SampleSchema()
-        data = Sample.query.all()
-        return sample_schema.dump(data).data
 
     @staticmethod
     def set_abstract(sample, abstract):
@@ -327,8 +318,9 @@ class SampleController(object):
         c = Sample.query.filter(Sample.md5.like(needleq)).all()
         results = list(set(a + b + c))
         function_results = None
-        if re.match("[0-9a-f]{8}", needle):
-            function_results = cls.search_machoc_single_hash(needle)
+	# XXX fix this
+        #if re.match("[0-9a-f]{8}", needle):
+            #function_results = cls.search_machoc_single_hash(needle)
         return results, function_results
 
     @classmethod
@@ -412,7 +404,22 @@ class SampleController(object):
         return False
 
     @staticmethod
-    def match_by_importhash(sample):
+    def add_sample_match(sample_1, sample_2, match_type):
+        """
+            Create and commit a sample match between two samples,
+            with the associated type.
+            Used types are "iat_hash" or "machoc80"
+        """
+        match = SampleMatch()
+        match.match_type = match_type
+        match.sid_2 = sample_2.id
+        sample_1.linked_samples.append(match)
+        sample_2.linked_samples_2.append(match)
+        db.session.add(match)
+        db.session.commit()
+
+    @classmethod
+    def match_by_importhash(cls, sample):
         """
             Match samples by import hash.
         """
@@ -423,52 +430,33 @@ class SampleController(object):
             if sample_2.id != sample.id:
                 if SampleMatch.query.filter(SampleMatch.sid_1.in_([sample.id, sample_2.id]), SampleMatch.sid_2.in_(
                         [sample.id, sample_2.id]), SampleMatch.match_type == "iat_hash").count() == 0:
-                    match = SampleMatch()
-                    match.match_type = "iat_hash"
-                    match.sid_2 = sample_2.id
-                    sample.linked_samples.append(match)
-                    sample_2.linked_samples_2.append(match)
-                    db.session.add(match)
-                    db.session.commit()
-
+                    cls.add_sample_match(sample, sample_2, "iat_hash")
                     # add the corresponding match to the other sample
-                    match = SampleMatch()
-                    match.match_type = "iat_hash"
-                    match.sid_2 = sample.id
-                    sample_2.linked_samples.append(match)
-                    db.session.add(match)
-                    db.session.commit()
-
-                continue
+                    cls.add_sample_match(sample_2, sample, "iat_hash")
         return True
 
-    def match_by_machoc80(self, sample):
+    @staticmethod
+    def query_machoc_matches(sample,  sample_2):
+        query = SampleMatch.query.filter(SampleMatch.sid_1.in_([sample.id, sample_2.id]), SampleMatch.sid_2.in_(
+                [sample.id, sample_2.id]), SampleMatch.match_type == "machoc80")
+        if query.count() != 0:
+            return True
+        return False
+
+    @classmethod
+    def match_by_machoc80(cls, sample):
         """
             Match samples by machoc hash.
         """
-        if len(sample.functions) == 0:
+        if sample.functions.count() == 0:
             return True
         for sample_2 in Sample.query.all():
-            if len(sample_2.functions) == 0:
+            if cls.query_machoc_matches(sample, sample_2):
                 continue
-            if SampleMatch.query.filter(SampleMatch.sid_1.in_([sample.id, sample_2.id]), SampleMatch.sid_2.in_(
-                    [sample.id, sample_2.id]), SampleMatch.match_type == "machoc80").count() != 0:
-                continue
-            if self.machoc_diff_samples(sample, sample_2) >= 0.8:
-                match = SampleMatch()
-                match.match_type = "machoc80"
-                match.sid_2 = sample_2.id
-                sample.linked_samples.append(match)
-                sample_2.linked_samples_2.append(match)
-                db.session.add(match)
-                db.session.commit()
-
-                match = SampleMatch()
-                match.match_type = "machoc80"
-                match.sid_2 = sample.id
-                sample_2.linked_samples.append(match)
-                db.session.add(match)
-                db.session.commit()
+            elif cls.machoc_diff_samples(sample, sample_2) >= 0.8:
+                app.logger.debug("Add machoc match %d %d", sample.id, sample_2.id)
+                cls.add_sample_match(sample, sample_2, "machoc80")
+                cls.add_sample_match(sample_2, sample, "machoc80")
         return True
 
     @classmethod
@@ -476,11 +464,11 @@ class SampleController(object):
         """
             Diff a sample with all other samples. Class method.
         """
-        if len(sample.functions) == 0:
+        if sample.functions.count() == 0:
             return []
         hits = []
         for sample_2 in Sample.query.all():
-            if len(sample_2.functions) == 0 or sample_2 == sample:
+            if sample_2.functions.count() == 0 or sample_2.id == sample.id:
                 continue
             hit_rate = cls.machoc_diff_samples(sample, sample_2)
             if hit_rate >= level:
@@ -492,8 +480,6 @@ class SampleController(object):
         """
             Diff two samples using machoc.
         """
-        if sample1 == sample2:
-            return 0
         sample1_hashes = []
         sample2_hashes = []
         for f in sample1.functions:
@@ -502,7 +488,8 @@ class SampleController(object):
         for f in sample2.functions:
             if f.machoc_hash is not None and f.machoc_hash != -1:
                 sample2_hashes.append(f.machoc_hash)
-        return cls.machoc_diff_hashes(sample1_hashes, sample2_hashes)
+        rate = cls.machoc_diff_hashes(sample1_hashes, sample2_hashes)
+        return rate
 
     @staticmethod
     def machoc_diff_hashes(sample1_hashes, sample2_hashes):
@@ -514,7 +501,8 @@ class SampleController(object):
         maxlen = max(len(sample1_hashes), len(sample2_hashes))
         c1, c2 = map(Counter, (sample1_hashes, sample2_hashes))
         ch = set(sample1_hashes).intersection(set(sample2_hashes))
-        return float(sum(map(lambda h: max(c1[h], c2[h]), ch))) / maxlen
+        rate = float(sum(map(lambda h: max(c1[h], c2[h]), ch))) / maxlen
+        return rate
 
     def machoc_get_similar_functions(self, sample_dst, sample_src):
         """
@@ -577,7 +565,6 @@ class SampleController(object):
                         src_addresses_identified.append(i.address)
                         dst_addresses_identified.append(j.address)
                         break
-        cc = 0
         # n-grams hits
         for i in src_ngrams_hashes:
             if src_hashes.count(i[ngram_mid]) == 1 and dst_hashes.count(
@@ -586,15 +573,13 @@ class SampleController(object):
             if i in dst_ngrams_hashes:
                 if src_ngrams_hashes.count(
                         i) == 1 and dst_ngrams_hashes.count(i) == 1:
-                    src_ngram_found = []
-                    dst_ngram_found = []
                     src_function = None
                     dst_function = None
                     tmp1 = []
                     tmp2 = []
-                    for x in src_sorted_fcts:
-                        tmp1.append(x[2])
-                        tmp2.append(x[1])
+                    for funcs in src_sorted_fcts:
+                        tmp1.append(funcs[2])
+                        tmp2.append(funcs[1])
                         if tmp2 == i:
                             src_function = tmp1[ngram_mid]
                             break
@@ -603,9 +588,9 @@ class SampleController(object):
                             tmp2 = tmp2[1:]
                     tmp1 = []
                     tmp2 = []
-                    for x in dst_sorted_fcts:
-                        tmp1.append(x[2])
-                        tmp2.append(x[1])
+                    for funcs in dst_sorted_fcts:
+                        tmp1.append(funcs[2])
+                        tmp2.append(funcs[1])
                         if tmp2 == i:
                             dst_function = tmp1[ngram_mid]
                             break
@@ -653,7 +638,7 @@ class SampleController(object):
             try:
                 metadata_value = str(metadata_value)
             except Exception as e:
-                app.logger.error("Invalid metadata supplied")
+                app.logger.exception(e)
                 return False
         for s_metadata in sample.s_metadata:
             if s_metadata.type_id == metadata_type and s_metadata.value == metadata_value:
@@ -707,7 +692,15 @@ class SampleController(object):
         return True
 
     @staticmethod
-    def add_function(sample, address, machoc_hash,
+    def query_function_info(sample, address):
+        obj = FunctionInfo.query.filter_by(sample_id=sample.id, address=address)
+        if obj.count() != 0:
+            return obj.first()
+        else:
+            return None
+
+    @classmethod
+    def add_function(cls, sample, address, machoc_hash,
                      name="", overwrite=False, do_commit=True):
         """
             Add a function. Updates if exists.
@@ -717,9 +710,8 @@ class SampleController(object):
         if name == "":
             name = "sub_" + hex(address)[2:]
         functions_exists = False
-        obj = FunctionInfo.query.filter_by(sample=sample, address=address)
-        if obj.count() != 0:
-            function_info = obj.first()
+        function_info = cls.query_function_info(sample, address)
+        if function_info is not None:
             functions_exists = True
             if not overwrite:
                 return True
@@ -738,14 +730,16 @@ class SampleController(object):
 
     def add_multiple_functions(self, sample, funcs, overwrite=False):
         """
-            Add multiple.
+            Add multiple functions to the sample
+            Each func is a dict with the address as key,
+            and is a dict (machoc_hash, name)
         """
-        for address, machoc_hash, name in funcs:
+        for addr in funcs.keys():
             self.add_function(
                 sample,
-                address,
-                machoc_hash,
-                name,
+                addr,
+                funcs[addr]["machoc"],
+                funcs[addr]["name"],
                 overwrite,
                 do_commit=False)
         db.session.commit()
@@ -792,7 +786,7 @@ class SampleController(object):
     @staticmethod
     def get_sample_function_by_address(sample, address):
         if isinstance(address, str):
-            adress = int(address, 16)
+            address = int(address, 16)
         for functioninfo in sample.functions:
             # TODO : there is a bug in here.
             if int(functioninfo.address) == address:

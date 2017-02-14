@@ -10,11 +10,12 @@
 
 import datetime
 
-from poli import db
+from poli import app, db
+from poli.models.idaactions import IDAAction, IDAActionSchema
 from poli.models.idaactions import IDANameAction, IDACommentAction
-from poli.models.idaactions import IDAActionSchema
 from poli.models.idaactions import IDAStruct, IDAStructSchema
-from poli.models.idaactions import IDAStructMember, IDAStructSchema
+from poli.models.idaactions import IDAStructMember
+from poli.models.idaactions import IDATypeAction
 from poli.models.sample import Sample
 
 
@@ -22,6 +23,17 @@ class IDAActionsController(object):
     """
         Manage the recorded actions for IDA Pro.
     """
+    @staticmethod
+    def get_all(sid=None, timestamp=None):
+        if sid is None:
+            return False
+        query = IDAAction.query
+        query = query.filter(
+            IDAAction.samples.any(Sample.id == sid))
+        if timestamp is not None:
+            query = query.filter(timestamp >= timestamp)
+        schema = IDAActionSchema(many=True)
+        return schema.dump(query.all()).data
 
     @staticmethod
     def add_comment(address, data):
@@ -37,25 +49,32 @@ class IDAActionsController(object):
         return comment.id
 
     @staticmethod
-    def get_comments(sid=None, addr=None, timestamp=None):
+    def filter_actions(action_type, sid, addr=None, timestamp=None):
+        """
+            Generate a filtered query for IDAActions,
+            Filter by sample ID, address and timestamp
+        """
+        query = IDAAction.query.filter_by(type=action_type)
+        query = query.filter(IDAAction.samples.any(Sample.id == sid))
+
+        if addr is not None:
+            query = query.filter_by(address=addr)
+
+        if timestamp is not None:
+            query = query.filter(IDAAction.timestamp > timestamp)
+
+        return query.all()
+
+    @classmethod
+    def get_comments(cls, sid=None, addr=None, timestamp=None):
         """
             Filters for getting comments
             @arg addr Is there a comment for a specific address
             @timestamp Get only after this timestamp
         """
-        if timestamp is None:
-            timestamp = 0
-        # first query
-        comments = IDACommentAction.query
-        comments = comments.filter(
-            IDACommentAction.samples.any(Sample.id == sid))
-        comments = comments.filter(timestamp >= timestamp)
-        if addr is not None:
-            comments = comments.filter_by(address=addr).all()
-        else:
-            comments = comments.all()
+        data = cls.filter_actions('idacomment', sid, addr, timestamp)
         schema = IDAActionSchema(many=True)
-        data = schema.dump(comments).data
+        data = schema.dump(data).data
         return data
 
     @staticmethod
@@ -71,22 +90,14 @@ class IDAActionsController(object):
         db.session.commit()
         return name.id
 
-    @staticmethod
-    def get_names(sid, addr=None, timestamp=None):
+    @classmethod
+    def get_names(cls, sid, addr=None, timestamp=None):
         """
             Return defined names for a specific sample
             @arg addr the address for a specific name
-            @timestamp Last syncho timestamp
+            @timestamp Last desired timestamp
         """
-        query = IDANameAction.query
-        query = query.filter(IDANameAction.samples.any(Sample.id == sid))
-        if addr is not None:
-            query = query.filter_by(addr=addr)
-
-        if timestamp is not None:
-            query = query.filter_by(timestamp >= timestamp)
-
-        data = query.all()
+        data = cls.filter_actions('idanames', sid, addr, timestamp)
         schema = IDAActionSchema(many=True)
         return schema.dump(data).data
 
@@ -97,6 +108,7 @@ class IDAActionsController(object):
             return False
         mstruct = IDAStruct()
         mstruct.name = name
+        mstruct.data = name
         mstruct.timestamp = datetime.datetime.now()
         mstruct.size = 0
         db.session.add(mstruct)
@@ -109,14 +121,14 @@ class IDAActionsController(object):
         query = query.filter(IDAStruct.samples.any(Sample.id == sid))
 
         if timestamp is not None:
-            query = query.filter_by(timestamp >= timestamp)
+            query = query.filter(IDAStruct.timestamp > timestamp)
 
         data = query.all()
         schema = IDAStructSchema(many=True)
         return schema.dump(data).data
 
     @staticmethod
-    def get_one_struct(sid, struct_id):
+    def get_one_struct(struct_id):
         """
             Get only one structure
         """
@@ -125,7 +137,6 @@ class IDAActionsController(object):
 
         schema = IDAStructSchema()
         return schema.dump(data).data
-
 
     @staticmethod
     def create_struct_member(name=None, size=None, offset=None):
@@ -140,7 +151,7 @@ class IDAActionsController(object):
         return member.id
 
     @staticmethod
-    def add_member_to_struct(struct_id=None, mid=None, offset=None):
+    def add_member_to_struct(struct_id=None, mid=None):
         """
 
         """
@@ -197,3 +208,25 @@ class IDAActionsController(object):
         db.session.commit()
 
         return True
+
+    @staticmethod
+    def add_typedef(address, typedef):
+        """
+            Creates a new type definition
+        """
+        mtype = IDATypeAction()
+        mtype.address = address
+        mtype.data = typedef
+        mtype.timestamp = datetime.datetime.now()
+        db.session.add(mtype)
+        db.session.commit()
+        return mtype.id
+
+    @classmethod
+    def get_typedefs(cls, sid, addr=None, timestamp=None):
+        """
+            Return filtered IDA Pro type definitions
+        """
+        data = cls.filter_actions('idatypes', sid, addr, timestamp)
+        schema = IDAActionSchema(many=True)
+        return schema.dump(data).data

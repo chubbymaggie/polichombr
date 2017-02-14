@@ -8,21 +8,21 @@
         Forms used in the web interface.
 """
 
-from flask_wtf import Form
-from flask_security import RegisterForm
+from flask_wtf import FlaskForm
 from wtforms import StringField, FileField, SelectField
 from wtforms import SubmitField, TextAreaField, BooleanField
 from wtforms import PasswordField, HiddenField
 from wtforms import IntegerField
 from wtforms.validators import DataRequired, Length, EqualTo, InputRequired
 from poli.models.family import DetectionType
-from poli.models.models import TLPLevel
+from poli.models.models import TLPLevelChoices
 
 """
     USER forms.
 """
 
-class ChgThemeForm(Form):
+
+class ChgThemeForm(FlaskForm):
     """
     Change user's theme.
     """
@@ -35,7 +35,7 @@ class ChgThemeForm(Form):
     changetheme = SubmitField(u'Submit')
 
 
-class ChgNickForm(Form):
+class ChgNickForm(FlaskForm):
     """
     Change user's nickname (login).
     """
@@ -43,7 +43,7 @@ class ChgNickForm(Form):
     changenick = SubmitField(u'Submit')
 
 
-class ChgNameForm(Form):
+class ChgNameForm(FlaskForm):
     """
     Change user's full name.
     """
@@ -51,7 +51,7 @@ class ChgNameForm(Form):
     changename = SubmitField(u'Submit')
 
 
-class ChgPassForm(Form):
+class ChgPassForm(FlaskForm):
     """
     Change user's password.
     """
@@ -66,7 +66,7 @@ class ChgPassForm(Form):
     changepass = SubmitField(u'Submit')
 
 
-class LoginForm(Form):
+class LoginForm(FlaskForm):
     """
     User login.
     """
@@ -75,7 +75,7 @@ class LoginForm(Form):
     userlogin = SubmitField(u'Submit')
 
 
-class UserRegistrationForm(Form):
+class UserRegistrationForm(FlaskForm):
     """
     User registration.
     """
@@ -98,7 +98,7 @@ class UserRegistrationForm(Form):
 """
 
 
-class CreateCheckListForm(Form):
+class CreateCheckListForm(FlaskForm):
     """
     Create new checklist item.
     """
@@ -114,19 +114,12 @@ class CreateCheckListForm(Form):
 """
 
 
-class YaraForm(Form):
+class YaraForm(FlaskForm):
     """
     Create yara.
     """
     yara_name = StringField('yaraname', validators=[DataRequired()])
-    choices = [
-        (TLPLevel.TLPWHITE, 'TLP White'),
-        (TLPLevel.TLPGREEN, 'TLP Green'),
-        (TLPLevel.TLPAMBER, 'TLP Amber'),
-        (TLPLevel.TLPRED, 'TLP Red'),
-        (TLPLevel.TLPBLACK, 'TLP Black'),
-    ]
-    yara_tlp = SelectField('Sensibility', choices=choices,
+    yara_tlp = SelectField('Sensibility', choices=TLPLevelChoices,
                            coerce=int, validators=[DataRequired()])
     yara_raw = TextAreaField('Yaradata', validators=[DataRequired()])
     createyara = SubmitField(u'Submit')
@@ -139,7 +132,7 @@ class YaraForm(Form):
 """
 
 
-class FamilyForm(Form):
+class FamilyForm(FlaskForm):
     """
     Create family.
     """
@@ -147,7 +140,7 @@ class FamilyForm(Form):
     createfamily = SubmitField(u'Submit')
 
 
-class AddSubFamilyForm(Form):
+class AddSubFamilyForm(FlaskForm):
     """
     Create sub-family.
     """
@@ -155,25 +148,18 @@ class AddSubFamilyForm(Form):
     subfamily = SubmitField(u'Create')
 
 
-class UploadFamilyFileForm(Form):
+class UploadFamilyFileForm(FlaskForm):
     """
     Add family file.
     """
     file = FileField('File', validators=[DataRequired()])
     description = StringField('description', validators=[DataRequired()])
-    choices = [
-        (TLPLevel.TLPWHITE, 'TLP White'),
-        (TLPLevel.TLPGREEN, 'TLP Green'),
-        (TLPLevel.TLPAMBER, 'TLP Amber'),
-        (TLPLevel.TLPRED, 'TLP Red'),
-        (TLPLevel.TLPBLACK, 'TLP Black'),
-    ]
-    level = SelectField(u'Sensibility', choices=choices,
+    level = SelectField(u'Sensibility', choices=TLPLevelChoices,
                         coerce=int, validators=[DataRequired()])
     uploadfile = SubmitField(u'Submit')
 
 
-class CreateDetectionItemForm(Form):
+class CreateDetectionItemForm(FlaskForm):
     """
     Add detection item.
     """
@@ -190,40 +176,27 @@ class CreateDetectionItemForm(Form):
         coerce=int,
         validators=[
             DataRequired()])
-    choices = [
-        (TLPLevel.TLPWHITE, 'TLP White'),
-        (TLPLevel.TLPGREEN, 'TLP Green'),
-        (TLPLevel.TLPAMBER, 'TLP Amber'),
-        (TLPLevel.TLPRED, 'TLP Red'),
-        (TLPLevel.TLPBLACK, 'TLP Black'),
-    ]
+
     tlp_level = SelectField(
         u'Sensibility',
-        choices=choices,
+        choices=TLPLevelChoices,
         coerce=int,
         validators=[
             DataRequired()])
     createitem = SubmitField(u'Create')
 
 
-class ChangeTLPForm(Form):
+class ChangeTLPForm(FlaskForm):
     """
     Change TLP level.
     """
-    choices = [
-        (TLPLevel.TLPWHITE, 'TLP White'),
-        (TLPLevel.TLPGREEN, 'TLP Green'),
-        (TLPLevel.TLPAMBER, 'TLP Amber'),
-        (TLPLevel.TLPRED, 'TLP Red'),
-        (TLPLevel.TLPBLACK, 'TLP Black'),
-    ]
     item_id = HiddenField(u'item_id')
-    level = SelectField(u'', choices=choices,
+    level = SelectField(u'', choices=TLPLevelChoices,
                         coerce=int, validators=[DataRequired()])
     changetlp = SubmitField(u'Change TLP level')
 
 
-class ChangeStatusForm(Form):
+class ChangeStatusForm(FlaskForm):
     """
     Change analysis status.
     """
@@ -241,7 +214,7 @@ class ChangeStatusForm(Form):
     changestatus = SubmitField(u'Change status')
 
 
-class AddYaraToFamilyForm(Form):
+class AddYaraToFamilyForm(FlaskForm):
     """
     Add yara rule.
     """
@@ -253,7 +226,7 @@ class AddYaraToFamilyForm(Form):
     addyarafam = SubmitField(u'Submit')
 
 
-class RenameForm(Form):
+class RenameForm(FlaskForm):
     """
     Rename.
     """
@@ -262,7 +235,7 @@ class RenameForm(Form):
     rename = SubmitField(u'Rename')
 
 
-class FamilyAbstractForm(Form):
+class FamilyAbstractForm(FlaskForm):
     """
     Edit abstract.
     """
@@ -274,17 +247,11 @@ class FamilyAbstractForm(Form):
     familyabstract = SubmitField(u'Submit')
 
 
-class ExportFamilyForm(Form):
+class ExportFamilyForm(FlaskForm):
     """
     Export family data.
     """
-    choices = [
-        (TLPLevel.TLPWHITE, 'TLP White'),
-        (TLPLevel.TLPGREEN, 'TLP Green'),
-        (TLPLevel.TLPAMBER, 'TLP Amber'),
-        (TLPLevel.TLPRED, 'TLP Red')
-    ]
-    level = SelectField(u'Maximum sensibility', choices=choices,
+    level = SelectField(u'Maximum sensibility', choices=TLPLevelChoices,
                         coerce=int, validators=[DataRequired()])
     choices = [
         (1, "Yara rules (RULESET)"),
@@ -306,25 +273,18 @@ class ExportFamilyForm(Form):
 """
 
 
-class UploadSampleForm(Form):
+class UploadSampleForm(FlaskForm):
     """
     Upload sample.
     """
     file = FileField('Sample File', validators=[DataRequired()])
-    choices = [
-        (TLPLevel.TLPWHITE, 'TLP White'),
-        (TLPLevel.TLPGREEN, 'TLP Green'),
-        (TLPLevel.TLPAMBER, 'TLP Amber'),
-        (TLPLevel.TLPRED, 'TLP Red'),
-        (TLPLevel.TLPBLACK, 'TLP Black'),
-    ]
-    level = SelectField(u'Sensibility', choices=choices,
+    level = SelectField(u'Sensibility', choices=TLPLevelChoices,
                         coerce=int, validators=[DataRequired()])
     family = SelectField(u'Associated Family', coerce=int)
     uploadsample = SubmitField(u'Submit')
 
 
-class AddSampleToFamilyForm(Form):
+class AddSampleToFamilyForm(FlaskForm):
     """
     Add sample to family.
     """
@@ -336,7 +296,7 @@ class AddSampleToFamilyForm(Form):
     addsample = SubmitField(u'Submit')
 
 
-class SampleAbstractForm(Form):
+class SampleAbstractForm(FlaskForm):
     """
     Edit abstract.
     """
@@ -347,7 +307,7 @@ class SampleAbstractForm(Form):
     sampleabstract = SubmitField(u'Submit')
 
 
-class CompareMachocForm(Form):
+class CompareMachocForm(FlaskForm):
     """
     Compare to other samples.
     """
@@ -356,7 +316,7 @@ class CompareMachocForm(Form):
     compare = SubmitField(u'Compare!')
 
 
-class ExportMachexForm(Form):
+class ExportMachexForm(FlaskForm):
     """
     Export MACHEX data.
     """
@@ -375,19 +335,12 @@ class ExportMachexForm(Form):
     export = SubmitField(u'Submit')
 
 
-class ImportForm(Form):
+class ImportForm(FlaskForm):
     """
     Import MACHEX data.
     """
     file = FileField('MACHEX File', validators=[DataRequired()])
-    choices = [
-        (TLPLevel.TLPWHITE, 'TLP White'),
-        (TLPLevel.TLPGREEN, 'TLP Green'),
-        (TLPLevel.TLPAMBER, 'TLP Amber'),
-        (TLPLevel.TLPRED, 'TLP Red'),
-        (TLPLevel.TLPBLACK, 'TLP Black'),
-    ]
-    level = SelectField(u'Sensibility', choices=choices,
+    level = SelectField(u'Sensibility', choices=TLPLevelChoices,
                         coerce=int, validators=[DataRequired()])
     importform = SubmitField(u'Submit')
 
@@ -399,7 +352,7 @@ class ImportForm(Form):
 """
 
 
-class FullTextSearchForm(Form):
+class FullTextSearchForm(FlaskForm):
     """
     Full-text search.
     """
@@ -407,18 +360,20 @@ class FullTextSearchForm(Form):
     search = SubmitField(u'Submit')
 
 
-class MachocHashSearchForm(Form):
+class MachocHashSearchForm(FlaskForm):
     """
     Full machoc hash search.
     """
     percent = IntegerField("Minimum hit level")
-    mneedle = StringField("Search", validators=[DataRequired()])
+    mneedle = StringField("Search", validators=[DataRequired(),
+                                                Length(min=8, max=8)])
     search = SubmitField(u'Submit')
 
 
-class HashSearchForm(Form):
+class HashSearchForm(FlaskForm):
     """
     Hash search.
     """
-    hneedle = StringField("Search", validators=[DataRequired()])
+    hneedle = StringField("Search", validators=[DataRequired(),
+                                                Length(min=32, max=64)])
     search = SubmitField(u'Submit')
