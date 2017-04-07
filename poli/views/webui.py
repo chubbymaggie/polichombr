@@ -163,34 +163,38 @@ def logout():
 @app.route('/skelenox/', methods=['GET', 'POST'])
 @login_required
 def dl_skelenox():
+    """
+        Generate a Zip file wich contains both the Skelenox script
+        and the associated config file.
+    """
     try:
-        ipaddr, port = request.host.split(":")
+        ip_addr, _ = request.host.split(":")
     except ValueError:
-        ipaddr = request.host
-        port = 80
+        ip_addr = request.host
+
     zipout = io.BytesIO()
     with ZipFile(zipout, "w") as myzip:
         myzip.write("skelenox.py")
-        gsx = {}
-        gsx["username"] = g.user.nickname
-        gsx["edit_flag"] = True
-        gsx["poli_server"] = ipaddr
-        gsx["poli_port"] = port
-        gsx["poli_remote_path"] = "/"
-        gsx["debug_http"] = False
-        gsx["poli_apikey"] = g.user.api_key
-        gsx["online_at_startup"] = False
-        gsx["poli_timeout"] = 5
-        gsx["display_subs_info"] = False
-        gsx["int_func_lines_count"] = 9
-        gsx["save_timeout"] = 10 * 60
-        gsx["auto_highlight"] = 1
-        gsx["backgnd_highlight_color"] = 0xA0A0FF
-        gsx["backgnd_std_color"] = 0xFFFFFFFF
-        gsx["notepad_font_name"] = "Courier New"
-        gsx["notepad_font_size"] = 9
-        sx = json.dumps(gsx, sort_keys=True, indent=4)
-        myzip.writestr("skelsettings.json", sx)
+        skel_config = {}
+        skel_config["username"] = g.user.nickname
+        skel_config["edit_flag"] = True
+        skel_config["poli_server"] = ip_addr
+        skel_config["poli_port"] = app.config['SERVER_PORT']
+        skel_config["poli_remote_path"] = app.config['API_PATH'] + "/"
+        skel_config["debug_http"] = app.config['HTTP_DEBUG']
+        skel_config["poli_apikey"] = g.user.api_key
+        skel_config["online_at_startup"] = False
+        skel_config["poli_timeout"] = 5
+        skel_config["display_subs_info"] = False
+        skel_config["int_func_lines_count"] = 9
+        skel_config["save_timeout"] = 10 * 60
+        skel_config["auto_highlight"] = 1
+        skel_config["backgnd_highlight_color"] = 0xA0A0FF
+        skel_config["backgnd_std_color"] = 0xFFFFFFFF
+        skel_config["notepad_font_name"] = "Courier New"
+        skel_config["notepad_font_size"] = 9
+        skel_json = json.dumps(skel_config, sort_keys=True, indent=4)
+        myzip.writestr("skelsettings.json", skel_json)
         myzip.close()
     response = make_response(zipout.getvalue())
     response.headers["Content-type"] = "application/octet-stream"
@@ -263,6 +267,7 @@ def view_user(user_id):
             if api.usercontrol.check_user_pass(
                     myuser, chpassform.oldpass.data):
                 api.usercontrol.set_pass(myuser, chpassform.password.data)
+                flash("Changed user password", "success")
     return render_template('user.html',
                            chnickform=chnickform,
                            chthemeform=chthemeform,
@@ -479,7 +484,8 @@ def delete_yara_family(family_id, yara_id):
     yar = api.yaracontrol.get_by_id(yara_id)
     if family is None or yar is None:
         abort(404)
-    api.yaracontrol.remove_to_family(family, yar)
+    api.yaracontrol.remove_from_family(family, yar)
+    flash("Removed yara %s from family %s"%(yar.name, family.name), "success")
     return redirect(url_for("view_family", family_id=family_id))
 
 
@@ -509,6 +515,7 @@ def delete_family(family_id):
         abort(404)
     parentfamily = family.parents
     api.familycontrol.delete(family)
+    flash("Deleted family", "success")
     if parentfamily is not None:
         return redirect(url_for('view_family', family_id=parentfamily.id))
     return redirect(url_for('view_families'))
@@ -531,19 +538,26 @@ def ui_sample_upload():
     families_choices = [(0, "None")]
     families_choices += [(f.id, f.name) for f in Family.query.order_by('name')]
     upload_form.family.choices = families_choices
+
     if upload_form.validate_on_submit():
-        file_data = upload_form.file.data
         family_id = upload_form.family.data
         family = None
         if family_id != 0:
             family = api.familycontrol.get_by_id(family_id)
             if family is None:
+                flash("Could not find the family", "error")
                 abort(404)
-        file_name = secure_filename(upload_form.file.data.filename)
-        sample = api.create_sample_and_run_analysis(
-            file_data, file_name, g.user, upload_form.level.data, family)
-        if sample:
-            return redirect(url_for('view_sample', sample_id=sample.id))
+
+        for mfile in upload_form.files.raw_data:
+            file_data = mfile.stream
+            file_name = secure_filename(mfile.filename)
+
+            sample = api.create_sample_and_run_analysis(
+                file_data, file_name, g.user, upload_form.level.data, family)
+            if sample:
+                flash("Created sample " + str(sample.id), "success")
+            else:
+                flash("Error during sample creation", "error")
     return redirect(url_for('index'))
 
 
@@ -842,8 +856,6 @@ def ui_search():
                            mresults=functions_results,
                            hresults=hash_compare_results,
                            results=samples_results)
-
-
 """
 
     YARA SIGNATURES
@@ -862,18 +874,22 @@ def ui_yara():
     rename_yara_form = RenameForm()
 
     if create_yara_form.validate_on_submit():
-        api.yaracontrol.create(
+        ret = api.yaracontrol.create(
             create_yara_form.yara_name.data,
             create_yara_form.yara_raw.data,
             create_yara_form.yara_tlp.data)
-    if change_tlp_level_form.validate_on_submit():
+        if ret is None:
+            flash("Error during yara creation", "error")
+        else:
+            flash("Created yara " + ret.name, "success")
+    elif change_tlp_level_form.validate_on_submit():
         if change_tlp_level_form.item_id:
             yar = api.yaracontrol.get_by_id(change_tlp_level_form.item_id.data)
             if yar is None:
                 abort(404)
             api.yaracontrol.set_tlp_level(
                 change_tlp_level_form.level.data, yar)
-    if rename_yara_form.validate_on_submit():
+    elif rename_yara_form.validate_on_submit():
         if rename_yara_form.item_id:
             yar = api.yaracontrol.get_by_id(rename_yara_form.item_id.data)
             if yar is None:
