@@ -13,11 +13,12 @@ from marshmallow import fields
 
 from poli import db, ma
 
-from poli.models.models import TLPLevel
+from poli.models.models import CustomEnum, TLPLevel
 from poli.models.analysis import AnalysisResultSchema
 
 
 class SampleMetadata(db.Model):
+
     """
         Generic table used to store generic file metadata. Type must be
         defined in the SampleMetadataType enum class below. Value contains
@@ -30,7 +31,8 @@ class SampleMetadata(db.Model):
     sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"), index=True)
 
 
-class SampleMetadataType:
+class SampleMetadataType(CustomEnum):
+
     """
         Possible keys for file metadata.
     """
@@ -92,19 +94,9 @@ class SampleMetadataType:
         PE_OPTIONAL_HEADER_NumberOfRvaAndSizes,
         PE_import_hash) = range(1, 57)
 
-    @classmethod
-    def tostring(cls, val):
-        for k, v in vars(cls).iteritems():
-            if v == val:
-                return k
-        return ""
-
-    @classmethod
-    def fromstring(cls, s):
-        return getattr(cls, s, None)
-
 
 class StringsItem(db.Model):
+
     """
     Strings contained in a binary file. Strings types are defined by the
     StringsType enum class.
@@ -116,7 +108,8 @@ class StringsItem(db.Model):
     sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"), index=True)
 
 
-class StringsType:
+class StringsType(CustomEnum):
+
     """
     Strings types.
     """
@@ -127,19 +120,9 @@ class StringsType:
         UNPACKED    # extracted after unpacking in IDAPro
     ) = range(1, 5)
 
-    @classmethod
-    def tostring(cls, val):
-        for k, v in vars(cls).iteritems():
-            if v == val:
-                return k
-        return ""
-
-    @classmethod
-    def fromstring(cls, val):
-        return getattr(cls, val, None)
-
 
 class FunctionInfo(db.Model):
+
     """
         Function information. Contains function's name, machoc hash and
         address. Used for quick function access. Machoc hash can be
@@ -154,6 +137,7 @@ class FunctionInfo(db.Model):
 
 
 class SampleMatch(db.Model):
+
     """
         Match between samples. Used to spot samples similarities on
         analysis. Displayed to user.
@@ -166,6 +150,7 @@ class SampleMatch(db.Model):
 
 
 class FileName(db.Model):
+
     """
         Sample's files names.
     """
@@ -175,7 +160,8 @@ class FileName(db.Model):
     sample_id = db.Column(db.Integer(), db.ForeignKey("sample.id"))
 
 
-class AnalysisStatus:
+class AnalysisStatus(CustomEnum):
+
     """
         Sample's analysis status (enum). Used for analysis scheduling
         and in samples views.
@@ -186,19 +172,9 @@ class AnalysisStatus:
         TOSTART
     ) = range(1, 4)
 
-    @classmethod
-    def tostring(cls, val):
-        for k, v in vars(cls).iteritems():
-            if v == val:
-                return k
-        return ""
-
-    @classmethod
-    def fromstring(cls, val):
-        return getattr(cls, val, None)
-
 
 class CheckList(db.Model):
+
     """
         Checklist fields and description. This is a global information,
         set in the admin panel, links will just determine if checked
@@ -243,13 +219,13 @@ sampletoactions = db.Table('sampletoactions',
 
 
 class Sample(db.Model):
+
     """
     Samples model.
     """
     __tablename__ = 'sample'
     id = db.Column(db.Integer, primary_key=True)
     # N-N relationships
-    family_id = db.Column(db.Integer, db.ForeignKey('family.id'))
     check_list = db.relationship('CheckList',
                                  secondary=sampletochecklist,
                                  backref=db.backref('samples', lazy='dynamic'))
@@ -320,7 +296,21 @@ class Sample(db.Model):
         return 'Sample %d' % self.id
 
 
+class FunctionInfoSchema(ma.ModelSchema):
+
+    """
+        Marshmallow wrapper for FunctionInfo model
+    """
+    class Meta:
+        fields = ('id',
+                  'address',
+                  'name',
+                  'sample_id',
+                  'machoc_hash')
+
+
 class SampleMatchSchema(ma.ModelSchema):
+
     """
     Match schema.
     """
@@ -332,6 +322,7 @@ class SampleMatchSchema(ma.ModelSchema):
 
 
 class SampleSchema(ma.ModelSchema):
+
     """
     Sample schema.
     """
@@ -345,6 +336,7 @@ class SampleSchema(ma.ModelSchema):
                                    only=['sid_2', 'match_type'])
 
     class Meta:
+
         """
             See flask-marshmallow doc
         """

@@ -13,6 +13,7 @@ from poli import app
 
 
 class Task(object):
+
     """
         Abstract class to define a task to execute.
     """
@@ -39,7 +40,8 @@ class Task(object):
             tstart = int(time.time())
             ret = func(*args, **kwargs)
             time_delta = int(time.time()) - tstart
-            app.logger.debug("%s took %d seconds" % (func.__name__, time_delta))
+            app.logger.debug("%s took %d seconds" %
+                             (func.__name__, time_delta))
             return ret
         return wrapper
 

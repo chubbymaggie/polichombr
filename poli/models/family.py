@@ -12,10 +12,11 @@ from marshmallow import fields
 
 from poli import db, ma
 from poli.models.sample import SampleSchema
-from poli.models.models import TLPLevel
+from poli.models.models import CustomEnum, TLPLevel
 
 
 class DetectionElement(db.Model):
+
     """
     Detection element: provided by users, can be any of the DetectionType
     values.
@@ -29,7 +30,8 @@ class DetectionElement(db.Model):
     family_id = db.Column(db.Integer(), db.ForeignKey("family.id"))
 
 
-class DetectionType:
+class DetectionType(CustomEnum):
+
     """
     Custom family-related detection types.
     """
@@ -38,17 +40,6 @@ class DetectionType:
         OPENIOC,    # open ioc format
         SNORT       # snort rule(set)
     ) = range(1, 4)
-
-    @classmethod
-    def tostring(cls, val):
-        for k, v in vars(cls).iteritems():
-            if v == val:
-                return k
-        return ""
-
-    @classmethod
-    def fromstring(cls, val):
-        return getattr(cls, val, None)
 
 
 class FamilyDataFile(db.Model):
@@ -64,7 +55,7 @@ class FamilyDataFile(db.Model):
     family_id = db.Column(db.Integer(), db.ForeignKey("family.id"))
 
 
-class FamilyStatus:
+class FamilyStatus(CustomEnum):
     """
         Is the family analysis complete or not?
     """
@@ -74,34 +65,24 @@ class FamilyStatus:
         NOT_STARTED
     ) = range(1, 4)
 
-    @classmethod
-    def tostring(cls, val):
-        for k, v in vars(cls).iteritems():
-            if v == val:
-                return k
-        return ""
-
-    @classmethod
-    def fromstring(cls, val):
-        return getattr(cls, val, None)
 
 # Yara signatures relationship (auto-classification).
 familytoyara = db.Table('familytoyara',
                         db.Column('yara_id', db.Integer,
                                   db.ForeignKey('yararule.id'), index=True),
                         db.Column('family_id', db.Integer,
-                                  db.ForeignKey('family.id'), index=True)
-                        )
+                                  db.ForeignKey('family.id'), index=True))
+
 # Samples relationship.
 familytosample = db.Table('familytosample',
                           db.Column('sample_id', db.Integer,
                                     db.ForeignKey('sample.id'), index=True),
                           db.Column('family_id', db.Integer,
-                                    db.ForeignKey('family.id'), index=True)
-                          )
+                                    db.ForeignKey('family.id'), index=True))
 
 
 class Family(db.Model):
+
     """
     Family model.
     """
@@ -125,7 +106,7 @@ class Family(db.Model):
     associated_files = db.relationship('FamilyDataFile')
     detection_items = db.relationship('DetectionElement')
     # Family name's
-    name = db.Column(db.String(), index=True, unique=True)
+    name = db.Column(db.String(), index=True)
     # User-supplied abstract
     abstract = db.Column(db.String())
     # Analysis status
@@ -152,8 +133,12 @@ class FamilySchema(ma.ModelSchema):
                                                                  'subfamilies',
                                                                  'status'])
     parents = fields.Nested('FamilySchema', many=True, only=['id', 'name'])
+    users = fields.Nested('UserSchema', many=True, only=["id", "nickname"])
 
-    class Meta:
+    class Meta(object):
+        """
+            List of simple fields
+        """
         fields = ('id',
                   'name',
                   'parent_id',
@@ -161,5 +146,5 @@ class FamilySchema(ma.ModelSchema):
                   'samples',
                   'abstract',
                   'status',
-                  'TLP_sensibility'
-                  )
+                  'TLP_sensibility',
+                  'users')

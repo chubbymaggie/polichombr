@@ -19,6 +19,7 @@ from poli.controllers.jobpool import JobPool
 
 
 class AnalysisFactory(object):
+
     """
         Dynamically loads tasks from directory
     """
@@ -37,7 +38,8 @@ class AnalysisFactory(object):
         srcre = re.compile('.py$', re.IGNORECASE)
         tasks_files = filter(srcre.search,
                              os.listdir(app.config['TASKS_PATH']))
-        form_module = lambda fp: os.path.splitext(fp)[0]
+
+        def form_module(fp): return os.path.splitext(fp)[0]
         tasks_modules = map(form_module, tasks_files)
         for task_filename in tasks_modules:
             if not task_filename.startswith('__'):
@@ -51,7 +53,8 @@ class AnalysisFactory(object):
                                 task_class):
                             self.tasks_classes_container.append(
                                 (task_class, task_filename))
-                            app.logger.info("Imported task %s" % (task_filename))
+                            app.logger.info("Imported task %s" %
+                                            (task_filename))
                 except Exception as e:
                     app.logger.error(
                         "Could not load %s : %s" %
@@ -90,6 +93,7 @@ class AnalysisFactory(object):
 
 
 class AnalysisController(object):
+
     """
     Manages the creation, dispatch and management of analysis tasks
     """
@@ -147,6 +151,7 @@ class AnalysisController(object):
 
 
 class Analysis(object):
+
     """
     Analysis object, contains tasks, and manages samples status.
     """
@@ -179,11 +184,12 @@ class Analysis(object):
         Sets the analysis status to FINISHED. Sets by the jobpool after tasks
         execution.
         """
-        if self.sid:
-            sample = Sample.query.get(self.sid)
-            if sample:
-                sample.analysis_status = AnalysisStatus.FINISHED
-                db.session.commit()
+        with app.app_context():
+            if self.sid:
+                sample = Sample.query.get(self.sid)
+                if sample:
+                    sample.analysis_status = AnalysisStatus.FINISHED
+                    db.session.commit()
         return True
 
     def add_task(self, task, tname):

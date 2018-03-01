@@ -1,7 +1,7 @@
 """
     This file is part of Polichombr.
 
-    (c) 2016 ANSSI-FR
+    (c) 2017 ANSSI-FR
 
 
     Description:
@@ -9,21 +9,18 @@
 """
 
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileRequired
+from flask_wtf.file import FileField
 from wtforms import StringField, SelectField
 from wtforms import SubmitField, TextAreaField, BooleanField
 from wtforms import PasswordField, HiddenField
 from wtforms import IntegerField
-from wtforms.validators import DataRequired, Length, EqualTo, InputRequired
+from wtforms.validators import DataRequired, Length, EqualTo
 from poli.models.family import DetectionType
 from poli.models.models import TLPLevelChoices
 
-"""
-    USER forms.
-"""
-
 
 class ChgThemeForm(FlaskForm):
+
     """
     Change user's theme.
     """
@@ -37,6 +34,7 @@ class ChgThemeForm(FlaskForm):
 
 
 class ChgNickForm(FlaskForm):
+
     """
     Change user's nickname (login).
     """
@@ -45,6 +43,7 @@ class ChgNickForm(FlaskForm):
 
 
 class ChgNameForm(FlaskForm):
+
     """
     Change user's full name.
     """
@@ -53,6 +52,7 @@ class ChgNameForm(FlaskForm):
 
 
 class ChgPassForm(FlaskForm):
+
     """
     Change user's password.
     """
@@ -68,6 +68,7 @@ class ChgPassForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
+
     """
     User login.
     """
@@ -77,6 +78,7 @@ class LoginForm(FlaskForm):
 
 
 class UserRegistrationForm(FlaskForm):
+
     """
     User registration.
     """
@@ -92,30 +94,18 @@ class UserRegistrationForm(FlaskForm):
     userregister = SubmitField(u'Submit')
 
 
-"""
-
-    SETTINGS forms.
-
-"""
-
-
 class CreateCheckListForm(FlaskForm):
+
     """
     Create new checklist item.
     """
     title = StringField("Title", validators=[DataRequired()])
-    description = TextAreaField("Title", validators=[DataRequired()])
+    description = TextAreaField("Content", validators=[DataRequired()])
     changepoke = SubmitField(u'Submit')
 
 
-"""
-
-    YARA forms.
-
-"""
-
-
 class YaraForm(FlaskForm):
+
     """
     Create yara.
     """
@@ -134,14 +124,18 @@ class YaraForm(FlaskForm):
 
 
 class FamilyForm(FlaskForm):
+
     """
     Create family.
     """
-    familyname = StringField('familyname', validators=[DataRequired()])
+    familyname = StringField('familyname',
+                             default=None,
+                             validators=[DataRequired()])
     createfamily = SubmitField(u'Submit')
 
 
 class AddSubFamilyForm(FlaskForm):
+
     """
     Create sub-family.
     """
@@ -150,6 +144,7 @@ class AddSubFamilyForm(FlaskForm):
 
 
 class UploadFamilyFileForm(FlaskForm):
+
     """
     Add family file.
     """
@@ -161,11 +156,12 @@ class UploadFamilyFileForm(FlaskForm):
 
 
 class CreateDetectionItemForm(FlaskForm):
+
     """
     Add detection item.
     """
     name = StringField(u'Name', validators=[DataRequired()])
-    abstract = TextAreaField(u'Abstract', validators=[DataRequired()])
+    item_abstract = TextAreaField(u'Abstract', validators=[DataRequired()])
     choices = [
         (DetectionType.CUSTOM, 'Custom'),
         (DetectionType.OPENIOC, 'OpenIOC'),
@@ -188,6 +184,7 @@ class CreateDetectionItemForm(FlaskForm):
 
 
 class ChangeTLPForm(FlaskForm):
+
     """
     Change TLP level.
     """
@@ -198,6 +195,7 @@ class ChangeTLPForm(FlaskForm):
 
 
 class ChangeStatusForm(FlaskForm):
+
     """
     Change analysis status.
     """
@@ -249,6 +247,7 @@ class FamilyAbstractForm(FlaskForm):
 
 
 class ExportFamilyForm(FlaskForm):
+
     """
     Export family data.
     """
@@ -267,26 +266,22 @@ class ExportFamilyForm(FlaskForm):
     exportfam = SubmitField('Submit')
 
 
-"""
-
-    SAMPLES forms.
-
-"""
-
-
 class UploadSampleForm(FlaskForm):
+
     """
     Upload sample.
     """
     files = FileField('Sample File', validators=[DataRequired()],
-                     render_kw={'multiple': True})
+                      render_kw={'multiple': True})
     level = SelectField(u'Sensibility', choices=TLPLevelChoices,
                         coerce=int, validators=[DataRequired()])
     family = SelectField(u'Associated Family', coerce=int)
+    zipflag = BooleanField('Sample Zip archive')
     uploadsample = SubmitField(u'Submit')
 
 
 class AddSampleToFamilyForm(FlaskForm):
+
     """
     Add sample to family.
     """
@@ -299,6 +294,7 @@ class AddSampleToFamilyForm(FlaskForm):
 
 
 class SampleAbstractForm(FlaskForm):
+
     """
     Edit abstract.
     """
@@ -310,6 +306,7 @@ class SampleAbstractForm(FlaskForm):
 
 
 class CompareMachocForm(FlaskForm):
+
     """
     Compare to other samples.
     """
@@ -319,6 +316,7 @@ class CompareMachocForm(FlaskForm):
 
 
 class ExportMachexForm(FlaskForm):
+
     """
     Export MACHEX data.
     """
@@ -329,15 +327,11 @@ class ExportMachexForm(FlaskForm):
     abstracts = BooleanField(u'Abstract')
     metadata = BooleanField(u'File metadata (PE, ELF...)')
     estrings = BooleanField(u'Strings')
-    sampleid = HiddenField(
-        u'sampleid',
-        default="1",
-        validators=[
-            InputRequired()])
     export = SubmitField(u'Submit')
 
 
 class ImportForm(FlaskForm):
+
     """
     Import MACHEX data.
     """
@@ -348,6 +342,7 @@ class ImportForm(FlaskForm):
 
 
 class FullTextSearchForm(FlaskForm):
+
     """
     Full-text search.
     """
@@ -356,6 +351,7 @@ class FullTextSearchForm(FlaskForm):
 
 
 class MachocHashSearchForm(FlaskForm):
+
     """
     Full machoc hash search.
     """
@@ -366,6 +362,7 @@ class MachocHashSearchForm(FlaskForm):
 
 
 class HashSearchForm(FlaskForm):
+
     """
     Hash search.
     """

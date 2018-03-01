@@ -14,12 +14,22 @@ engines:
     enabled: true
     config:
       python_version: 2
+  rubocop:
+    enabled: true
+  reek:
+    enabled: true
+  eslint:
+    enabled: true
+  markdownlint:
+    enabled: true
 ratings:
   paths:
   - "poli/**"
   - "**.py"
+  - "**.rb"
+  - "poli/static/js/*.js"
+
 exclude_paths:
-- "**.rb"
-- "**.md"
 - "tests/**"
-- "poli/static/**"
+- "poli/static/*.js"
+- "poli/static/*.css"

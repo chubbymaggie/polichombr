@@ -19,6 +19,7 @@ from poli.controllers.sample import SampleController
 
 
 class task_strings(Task):
+
     """
     Extract wide/ascii strings metadata form file using regexps.
     """
@@ -55,10 +56,11 @@ class task_strings(Task):
         return True
 
     def apply_result(self):
-        s_controller = SampleController()
-        sample = s_controller.get_by_id(self.sid)
-        app.logger.debug(self.tmessage + "APPLY_RESULT")
-        s_controller.add_multiple_strings(sample, self.resultstrings)
-        app.logger.debug(self.tmessage + "END - TIME %i" %
-                         (int(time.time()) - self.tstart))
+        with app.app_context():
+            s_controller = SampleController()
+            sample = s_controller.get_by_id(self.sid)
+            app.logger.debug(self.tmessage + "APPLY_RESULT")
+            s_controller.add_multiple_strings(sample, self.resultstrings)
+            app.logger.debug(self.tmessage + "END - TIME %i" %
+                             (int(time.time()) - self.tstart))
         return True
